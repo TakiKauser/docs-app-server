@@ -19,6 +19,7 @@ async function run() {
 
         const database = client.db('docsApp');
         const appointmentCollection = database.collection('appointments');
+        const userCollection = database.collection('users');
 
         app.get('/appointments', async (req, res) => {
             const email = req.query.email;
@@ -33,6 +34,24 @@ async function run() {
         app.post('/appointments', async (req, res) => {
             const appointment = req.body;
             const result = await appointmentCollection.insertOne(appointment);
+            res.json(result);
+        })
+
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            const result = await userCollection.insertOne(user);
+            console.log(result);
+            res.json(result);
+        })
+
+        app.put('/users', async (req, res) => {
+            const user = req.body;
+            const filter = { email: user.email };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: user
+            };
+            const result = await userCollection.updateOne(filter, updateDoc, options);
             res.json(result);
         })
 
