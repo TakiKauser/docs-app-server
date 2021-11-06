@@ -20,6 +20,16 @@ async function run() {
         const database = client.db('docsApp');
         const appointmentCollection = database.collection('appointments');
 
+        app.get('/appointments', async (req, res) => {
+            const email = req.query.email;
+            const date = new Date(req.query.date).toLocaleDateString();
+
+            const query = { email: email, date: date };
+            const cursor = appointmentCollection.find(query);
+            const appointments = await cursor.toArray();
+            res.json(appointments);
+        })
+
         app.post('/appointments', async (req, res) => {
             const appointment = req.body;
             const result = await appointmentCollection.insertOne(appointment);
