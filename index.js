@@ -3,7 +3,9 @@ const app = express();
 const cors = require('cors');
 const admin = require("firebase-admin");
 const { MongoClient } = require('mongodb');
+const ObjectId = require('mongodb').ObjectId;
 require('dotenv').config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET);
 
 const port = process.env.PORT || 5000;
 
@@ -51,6 +53,26 @@ async function run() {
             res.json(appointments);
         })
 
+        app.get('/appointments/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await appointmentCollection.findOne(query);
+            res.json(result);
+        })
+
+        app.put('/appointments/:id', async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
+            const filter = { _id: ObjectId(id) };
+            const updateDoc = { 
+                $set: {
+                    payment: payment
+                }
+            }
+            const result = await appointmentCollection.updateOne(filter, updateDoc);
+            res.json(result);
+        })
+
         app.get('/users/:email', async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
@@ -72,7 +94,6 @@ async function run() {
         app.post('/users', async (req, res) => {
             const user = req.body;
             const result = await userCollection.insertOne(user);
-            console.log(result);
             res.json(result);
         })
 
@@ -98,6 +119,21 @@ async function run() {
             const result = await userCollection.updateOne(filter, updateDoc);
             res.json(result);
         })
+
+        app.post('/create-payment-intent', async (req, res) => {
+            const paymentInfo = req.body;
+            const amount = paymentInfo.fee * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                currency: 'usd',
+                amount: amount,
+                payment_method_types: [
+                    'card'
+                ]
+            });
+            res.json({
+                clientSecret: paymentIntent.client_secret
+            })
+        });
 
     } finally {
         //   await client.close();
