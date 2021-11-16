@@ -6,6 +6,7 @@ const { MongoClient } = require('mongodb');
 const ObjectId = require('mongodb').ObjectId;
 require('dotenv').config();
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
+const fileUpload = require('express-fileupload');
 
 const port = process.env.PORT || 5000;
 
@@ -18,6 +19,7 @@ admin.initializeApp({
 // middleware
 app.use(cors());
 app.use(express.json());
+app.use(fileUpload());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.sydng.mongodb.net/myFirstDatabase?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -42,6 +44,7 @@ async function run() {
         const database = client.db('docsApp');
         const appointmentCollection = database.collection('appointments');
         const userCollection = database.collection('users');
+        const doctorCollection = database.collection('doctors');
 
         app.get('/appointments', async (req, res) => {
             const email = req.query.email;
@@ -64,7 +67,7 @@ async function run() {
             const id = req.params.id;
             const payment = req.body;
             const filter = { _id: ObjectId(id) };
-            const updateDoc = { 
+            const updateDoc = {
                 $set: {
                     payment: payment
                 }
@@ -83,6 +86,28 @@ async function run() {
                 isAdmin = true;
             }
             res.json({ admin: isAdmin });
+        })
+
+        app.get('/doctors', async (req, res) => {
+            const cursor = doctorCollection.find({});
+            const doctors = await cursor.toArray();
+            res.json(doctors);
+        })
+
+        app.post('/doctors', async (req, res) => {
+            const name = req.body.name;
+            const email = req.body.email;
+            const pic = req.files.image;
+            const picData = pic.data;
+            const encodedPic = picData.toString('base64');
+            const imageBuffer = Buffer.from(encodedPic, 'base64');
+            const doctor = {
+                name,
+                email,
+                image: imageBuffer
+            }
+            const result = await doctorCollection.insertOne(doctor);
+            res.json(result);
         })
 
         app.post('/appointments', async (req, res) => {
